@@ -30,7 +30,7 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
               <Sparkles className="w-2.5 h-2.5" /> PBR + Vector
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 font-normal">Vector Overlays, Surface Normals, Procedural Bump Maps & SVG Export</p>
+          <p className="text-[11px] text-slate-400 font-normal">Continuous Surfaces, Vector Overlays, Surface Normals, Bump Maps &amp; SVG Export</p>
         </div>
       </div>
 

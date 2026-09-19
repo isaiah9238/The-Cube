@@ -9,11 +9,19 @@ export interface ShapeDefinition {
   id: GeometryShape;
   label: string;
   icon: string;
-  category: 'prisms' | 'pyramids' | 'platonic' | 'curved';
+  category: 'continuous' | 'prisms' | 'pyramids' | 'platonic' | 'curved';
   desc: string;
 }
 
 export const ALL_SHAPES: ShapeDefinition[] = [
+  // Continuous & Minimal Surfaces
+  { id: 'mobius-strip', label: 'Möbius Strip', icon: '♾️', category: 'continuous', desc: 'Non-orientable continuous single-sided ribbon' },
+  { id: 'klein-bottle', label: 'Klein Bottle', icon: '🍾', category: 'continuous', desc: 'Figure-8 continuous 4D immersion' },
+  { id: 'enneper-surface', label: 'Enneper Surface', icon: '𑁍', category: 'continuous', desc: 'Self-intersecting minimal surface with H=0' },
+  { id: 'catenoid', label: 'Catenoid', icon: '⧗', category: 'continuous', desc: 'Continuous minimal surface of revolution' },
+  { id: 'hyperbolic-paraboloid', label: 'Saddle (HyPar)', icon: '∿', category: 'continuous', desc: 'Continuous doubly ruled saddle surface' },
+  { id: 'monkey-saddle', label: 'Monkey Saddle', icon: '☘', category: 'continuous', desc: 'Tri-directional continuous saddle z=x³-3xy²' },
+
   // Prisms & Polygons
   { id: 'hexagon', label: 'Hexagon', icon: '⬡', category: 'prisms', desc: '6-sided regular hexagonal prism' },
   { id: 'pentagon', label: 'Pentagon', icon: '⬠', category: 'prisms', desc: '5-sided regular pentagonal prism' },
@@ -95,7 +103,7 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
   const [wireframeActive, setWireframeActive] = useState<boolean>(false);
   const [selectedShape, setSelectedShape] = useState<GeometryShape>('hexagon');
   const [patternType, setPatternType] = useState<GridPatternType>('hexagonal');
-  const [shapeCategory, setShapeCategory] = useState<'all' | 'prisms' | 'pyramids' | 'platonic' | 'curved'>('all');
+  const [shapeCategory, setShapeCategory] = useState<'all' | 'continuous' | 'prisms' | 'pyramids' | 'platonic' | 'curved'>('all');
   const [showShapeMenu, setShowShapeMenu] = useState<boolean>(false);
 
   // Vector Solution states
@@ -350,8 +358,154 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
       return geo;
     }
 
+    // Parametric Continuous Surface Generator
+    function createParametricSurfaceGeometry(
+      func: (u: number, v: number, target: THREE.Vector3) => void,
+      slices = 72,
+      stacks = 72
+    ): THREE.BufferGeometry {
+      const positions: number[] = [];
+      const uvs: number[] = [];
+      const indices: number[] = [];
+      const temp = new THREE.Vector3();
+
+      for (let i = 0; i <= stacks; i++) {
+        const v = i / stacks;
+        for (let j = 0; j <= slices; j++) {
+          const u = j / slices;
+          func(u, v, temp);
+          positions.push(temp.x, temp.y, temp.z);
+          uvs.push(u, v);
+        }
+      }
+
+      for (let i = 0; i < stacks; i++) {
+        for (let j = 0; j < slices; j++) {
+          const a = i * (slices + 1) + j;
+          const b = (i + 1) * (slices + 1) + j;
+          const c = (i + 1) * (slices + 1) + (j + 1);
+          const d = i * (slices + 1) + (j + 1);
+
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setIndex(indices);
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // 1. Möbius Strip (Single-sided continuous ribbon with 180° twist)
+    function createMobiusStripGeometry(): THREE.BufferGeometry {
+      return createParametricSurfaceGeometry((u, v, target) => {
+        const uRad = u * Math.PI * 2;
+        const w = (v - 0.5) * 1.05;
+        const R = 1.35;
+        const halfU = uRad / 2;
+        const cosHalfU = Math.cos(halfU);
+        const sinHalfU = Math.sin(halfU);
+        const cosU = Math.cos(uRad);
+        const sinU = Math.sin(uRad);
+
+        const x = (R + w * cosHalfU) * cosU;
+        const y = (R + w * cosHalfU) * sinU;
+        const z = w * sinHalfU;
+        target.set(x, z, y);
+      }, 96, 32);
+    }
+
+    // 2. Klein Bottle (Continuous 4D immersion figure-8 surface)
+    function createKleinBottleGeometry(): THREE.BufferGeometry {
+      return createParametricSurfaceGeometry((u, v, target) => {
+        const uRad = u * Math.PI * 2;
+        const vRad = v * Math.PI * 2;
+        const r = 1.3;
+        const cosU = Math.cos(uRad);
+        const sinU = Math.sin(uRad);
+        const cosU2 = Math.cos(uRad / 2);
+        const sinU2 = Math.sin(uRad / 2);
+        const sinV = Math.sin(vRad);
+        const sin2V = Math.sin(2 * vRad);
+
+        const x = (r + cosU2 * sinV - sinU2 * sin2V) * cosU;
+        const y = (r + cosU2 * sinV - sinU2 * sin2V) * sinU;
+        const z = sinU2 * sinV + cosU2 * sin2V;
+        target.set(x * 0.85, z * 1.05, y * 0.85);
+      }, 80, 80);
+    }
+
+    // 3. Enneper Surface (Self-intersecting continuous minimal surface H=0)
+    function createEnneperGeometry(): THREE.BufferGeometry {
+      return createParametricSurfaceGeometry((u, v, target) => {
+        const uVal = (u - 0.5) * 2.3;
+        const vVal = (v - 0.5) * 2.3;
+        const u2 = uVal * uVal;
+        const v2 = vVal * vVal;
+
+        const x = uVal - (uVal * u2) / 3 + uVal * v2;
+        const y = vVal - (vVal * v2) / 3 + vVal * u2;
+        const z = u2 - v2;
+        target.set(x * 0.6, z * 0.6, y * 0.6);
+      }, 64, 64);
+    }
+
+    // 4. Catenoid (Continuous minimal surface of revolution)
+    function createCatenoidGeometry(): THREE.BufferGeometry {
+      return createParametricSurfaceGeometry((u, v, target) => {
+        const uRad = u * Math.PI * 2;
+        const vVal = (v - 0.5) * 2.3;
+        const c = 0.72;
+        const cosh = Math.cosh(vVal / c);
+        const x = c * cosh * Math.cos(uRad);
+        const z = c * cosh * Math.sin(uRad);
+        const y = vVal * 1.15;
+        target.set(x * 0.75, y, z * 0.75);
+      }, 72, 48);
+    }
+
+    // 5. Hyperbolic Paraboloid (Continuous doubly ruled saddle)
+    function createHyperbolicParaboloidGeometry(): THREE.BufferGeometry {
+      return createParametricSurfaceGeometry((u, v, target) => {
+        const xVal = (u - 0.5) * 2.4;
+        const zVal = (v - 0.5) * 2.4;
+        const a = 1.3;
+        const b = 1.3;
+        const y = ((xVal * xVal) / (a * a) - (zVal * zVal) / (b * b)) * 0.75;
+        target.set(xVal * 0.85, y, zVal * 0.85);
+      }, 64, 64);
+    }
+
+    // 6. Monkey Saddle (Tri-directional continuous saddle z = x³ - 3xy²)
+    function createMonkeySaddleGeometry(): THREE.BufferGeometry {
+      return createParametricSurfaceGeometry((u, v, target) => {
+        const xVal = (u - 0.5) * 2.4;
+        const zVal = (v - 0.5) * 2.4;
+        const y = (Math.pow(xVal, 3) - 3 * xVal * Math.pow(zVal, 2)) * 0.32;
+        target.set(xVal * 0.85, y, zVal * 0.85);
+      }, 64, 64);
+    }
+
     function createGeometry(type: GeometryShape): THREE.BufferGeometry {
       switch (type) {
+        // Continuous Surfaces
+        case 'mobius-strip':
+          return createMobiusStripGeometry();
+        case 'klein-bottle':
+          return createKleinBottleGeometry();
+        case 'enneper-surface':
+          return createEnneperGeometry();
+        case 'catenoid':
+          return createCatenoidGeometry();
+        case 'hyperbolic-paraboloid':
+          return createHyperbolicParaboloidGeometry();
+        case 'monkey-saddle':
+          return createMonkeySaddleGeometry();
+
+        // Prisms & Polygons
         case 'hexagon':
           return new THREE.CylinderGeometry(1.6, 1.6, 2.2, 6);
         case 'hexagonal-pyramid':
@@ -397,6 +551,7 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
       roughness: params.roughness,
       metalness: params.metalness,
       wireframe: params.wireframe,
+      side: THREE.DoubleSide,
     });
 
     const cube = new THREE.Mesh(geometry, material);
@@ -998,14 +1153,14 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
 
   // Featured quick-pick shapes for instant 1-click access
   const FEATURED_SHAPES: GeometryShape[] = [
+    'mobius-strip',
+    'klein-bottle',
+    'catenoid',
     'hexagon',
     'pentagon',
     'dodecahedron',
-    'icosahedron',
     'torus-knot',
-    'octagon',
     'triangle',
-    'hexagonal-pyramid',
     'cube',
   ];
 
@@ -1169,7 +1324,7 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-white tracking-tight">3D Geometry Library</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
-                16 Shapes Available
+                {ALL_SHAPES.length} Shapes (Continuous & Polyhedra)
               </span>
             </div>
             <button
@@ -1182,7 +1337,7 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
 
           {/* Category Filter Pills */}
           <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1 text-xs">
-            {(['all', 'prisms', 'pyramids', 'platonic', 'curved'] as const).map((cat) => (
+            {(['all', 'continuous', 'prisms', 'pyramids', 'platonic', 'curved'] as const).map((cat) => (
               <button
                 key={cat}
                 onClick={() => setShapeCategory(cat)}
@@ -1192,7 +1347,7 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
               >
-                {cat}
+                {cat === 'continuous' ? 'Continuous Surfaces' : cat}
               </button>
             ))}
           </div>
@@ -1317,11 +1472,11 @@ export const GridCubeCanvas: React.FC<GridCubeCanvasProps> = ({
                 ? 'bg-cyan-500 text-slate-950 font-semibold'
                 : 'bg-slate-900 text-cyan-300 hover:bg-slate-800 hover:text-white'
             }`}
-            title="Browse all 16 3D polyhedra and shapes"
+            title={`Browse all ${ALL_SHAPES.length} 3D continuous surfaces and polyhedra`}
           >
             <span>{ALL_SHAPES.find((s) => s.id === selectedShape)?.icon || '⬡'}</span>
             <span className="font-semibold">{ALL_SHAPES.find((s) => s.id === selectedShape)?.label || 'Shapes'}</span>
-            <span className="text-[10px] opacity-70">▾ (16)</span>
+            <span className="text-[10px] opacity-70">▾ ({ALL_SHAPES.length})</span>
           </button>
         </div>
 

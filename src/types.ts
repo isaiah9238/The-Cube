@@ -1,4 +1,12 @@
 export type GeometryShape =
+  // Continuous & Minimal Surfaces
+  | 'mobius-strip'
+  | 'klein-bottle'
+  | 'enneper-surface'
+  | 'catenoid'
+  | 'hyperbolic-paraboloid'
+  | 'monkey-saddle'
+  // Prisms & Platonic Solids
   | 'hexagon'
   | 'hexagonal-pyramid'
   | 'pentagon'

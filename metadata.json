@@ -1,6 +1,6 @@
 {
   "name": "Three.js Procedural Grid Cube",
-  "description": "Interactive Three.js 3D Polyhedra & Grid Studio with Vector Solution overlays (topological vector edges, surface normals, XYZ basis axes, vertex nodes, and resolution-independent SVG vector export), 16 geometric polyhedra, procedural bump mapping, and lil-gui controls.",
+  "description": "Interactive Three.js 3D Polyhedra & Grid Studio with Continuous Surfaces (Möbius strip, Klein bottle, Enneper minimal surface, catenoid, saddles), Vector Solution overlays (topological vector edges, surface normals, XYZ basis axes, vertex nodes, SVG vector export), 22 geometric models, procedural bump mapping, and lil-gui controls.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
